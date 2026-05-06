@@ -1605,30 +1605,19 @@ lama.hijackTurtleAPI()]], apiPath)
     -- Load state, if any.
     local valid = private.load()
 
-    -- Process event queue (blocks until processed) and get the ID which is
-    -- indicative of how long the turtle has lived (since command IDs grow
-    -- steadily over the lifetime of a computer). This is used for the validity
-    -- checks below.
-    local id
-    repeat
-        os.sleep(0.1)
-        id = turtle.native.detect()
-    until id ~= -1
-    private.waitForResponse(id)
+    -- Used to get ID but in CC: Tweaked we bypass it
+    local id = true
+    os.sleep(0.1)
+    turtle.native.detect()
 
     -- Force unwrapping if we have at least one level of startup wrapper.
     private.unwrapStartup(true)
 
     -- Ensure state validity using some tricks...
     if state.fuel.id then
-        -- If the ID we just got from our detect() call was larger than the one
-        -- we got when refueling we're OK. If it wasn't we can be sure there
-        -- was a rollback, in which case we can't say where we are anymore.
-        if id > state.fuel.id then
-            state.fuel.current = turtle.getFuelLevel()
-        else
-            valid = false
-        end
+        -- We can no longer depend on IDs in CC: Tweaked, so just trust fuel.
+        state.fuel.current = turtle.getFuelLevel()
+        valid = true
     elseif state.move then
         -- If we're moving it must match the stored one or be one less.
         valid = valid and turtle.getFuelLevel() == state.fuel.current or
@@ -1781,18 +1770,9 @@ function private.waitForResponse(ids)
         return true
     end
     local success = true
-    repeat
-        local event, responseID, result = os.pullEvent("turtle_response")
-        if event == "turtle_response" then
-            for i = 1, #ids do
-                if ids[i] == responseID then
-                    success = success and result
-                    table.remove(ids, i)
-                    break
-                end
-            end
-        end
-    until #ids == 0
+    for i = 1, #ids do
+        success = success and (ids[i] == true or ids[i] == nil)
+    end
     return success
 end
 
